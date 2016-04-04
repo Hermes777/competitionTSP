@@ -7,7 +7,7 @@
 
 const int antNum=34; //蚂蚁数量
 const double ALPHA=1.0; //启发因子，信息素的重要程度
-const double BETA=1.0;   //期望因子，城市间距离的重要程度
+const double BETA=0.1;   //期望因子，城市间距离的重要程度
 const double ROU=0.5; //信息素残留参数
 const double DBQ=100.0; //总的信息素
 const double DB_MAX=10e9; //一个标志数，10的9次方
@@ -90,7 +90,7 @@ int CAnt::ChooseNextCity(Graph& dataGraph)
 		int orient = dataGraph.edges[i].back;
 		if (m_nAllowedCity[orient] == 1) //城市没去过
 		{
-			prob[orient]+=pow(dataGraph.edges[i].msg,ALPHA)*pow(1.0/dataGraph.edges[i].weight,BETA+1-dataGraph.nodes[orient].label); //该城市和当前城市间的信息素
+			prob[orient]+=pow(dataGraph.edges[i].msg,ALPHA)*pow(1.0/dataGraph.edges[i].weight,BETA+(1-dataGraph.nodes[orient].label)*0.2); //该城市和当前城市间的信息素
 			dbTotal=dbTotal+prob[orient]; //累加信息素，得到总和
 		}
 		else //如果城市去过了，则其被选中的概率值为0
@@ -223,6 +223,7 @@ void TSP::init(Graph& dataGraph)
 	{
 //		printf("%d ",dataGraph.nodes[dataGraph.edges[m_cBestAnt.m_nPath[i]].back].order);
 		fprintf(fo,"%d|",dataGraph.edges[m_cBestAnt.m_nPath[i]].order);
+		printf("%d|",dataGraph.nodes[dataGraph.edges[m_cBestAnt.m_nPath[i]].back].order);
 		//if (i % 20 == 0)
 		//	printf("\n");
 		//printf(cBuf);
@@ -245,12 +246,12 @@ void TSP::UpdateMsg(Graph& dataGraph)
 		for(int j=0; j<m_cAntAry[i].pathNum;j++)
 		{
 			int now=m_cAntAry[i].m_nPath[j];
-			dbTempAry[now]+=(DBQ+m_cAntAry[i].m_nMovedCityCount*1)/m_cAntAry[i].m_dbPathLength;
+			dbTempAry[now]+=(DBQ)/m_cAntAry[i].m_dbPathLength*m_cAntAry[i].m_nMovedCityCount;
 		}
 	}
     //==================================================================
     //更新环境信息素
-	for (int i=0;i<m;i++)
+	for (int i=0;i<=m;i++)
 		dataGraph.edges[i].msg=dataGraph.edges[i].msg*ROU+dbTempAry[i]; //最新的环境信息素 = 留存的信息素 + 新留下的信息素
 }
 
@@ -276,11 +277,11 @@ void TSP::Search(Graph& dataGraph)
 				//printf("--%d00", m_cAntAry[j].pathNum);
 				//m_cBestAnt.Init(dataGraph);
 				m_cBestAnt.pathNum=m_cAntAry[j].pathNum;
-				printf("\n=\n");
+				printf("\n=%d=\n",i);
 				for(int k=0;k<m_cBestAnt.pathNum;k++)
 				{
 					m_cBestAnt.m_nPath[k]=m_cAntAry[j].m_nPath[k];
-					printf("%d ",dataGraph.nodes[m_cAntAry[j].m_nPath[k]].order);
+					printf("%d ",dataGraph.nodes[dataGraph.edges[m_cAntAry[j].m_nPath[k]].back].order);
 
 				}
 				printf("\n=\n");
@@ -292,6 +293,6 @@ void TSP::Search(Graph& dataGraph)
 		//更新环境信息素
 		UpdateMsg(dataGraph);
 		//输出目前为止找到的最优路径的长度
-		printf("\n%d %.0f %d",i+1,m_cBestAnt.m_dbPathLength,maxj);
 	}
+	printf("\n%d %.0f %d",m_cBestAnt.pathNum,m_cBestAnt.m_dbPathLength,maxj);
 }
