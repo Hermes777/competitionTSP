@@ -21,6 +21,7 @@ class Graph
 		int pre, back,order;
 		int path[21];
 		double weight,msg;
+		vector<int> subEdgeOrders;
 	};//pre-->previous edge at same node; back-->node the edge point to; 
 	struct Input
 	{
@@ -38,7 +39,7 @@ class Graph
 	}
 	void write();
 	void read();
-	void reverse(Graph& dataGraph,int st,int pRec[][21]);
+	void reverse(Graph& dataGraph,int st,int pRec[][21],int eRec[][601],int nRec[]);
 	Graph refinement(Graph& dataGraph);
 	void heap_down(int *a,int i,int n);
 	void heap_up(int *a,int i,int n);
@@ -155,16 +156,21 @@ Graph Graph::refinement(Graph& dataGraph)
 	for(int i=0;i<n;i++)
 	if(dataGraph.nodes[i].label==1)
 	{
-		printf("(((((((((%d)))))))\n",i);
 		Node temp;
 		temp.lastEdge=0;
 		temp.order=dataGraph.nodes[i].order;
+		temp.label=1;
 		num[newGraph.nNum]=i;
 		newGraph.nodes.push_back(temp);
+		if(dataGraph.source==i)
+			newGraph.source=newGraph.nNum;
+		if(dataGraph.target==i)
+			newGraph.target=newGraph.nNum;
 		newGraph.nNum++;
 	}
 
 	int pRec[601][21];
+	int eRec[601][601],nRec[601];//eRec-->edges,nRec-->number of edges
 	/*
 	for(int i=0;i<newGraph.nNum;i++)
 		for(int j=0;j<newGraph.nNum;j++)
@@ -189,20 +195,28 @@ Graph Graph::refinement(Graph& dataGraph)
 	newGraph.edges.push_back(tempZero);
 	newGraph.eNum=0;
 
+
 	for(int i=0;i<newGraph.nNum;i++)
 	{
-		reverse(dataGraph,num[i],pRec);
-		printf("=======================  %d==========================",dataGraph.nodes[num[i]].order);
+		reverse(dataGraph,num[i],pRec,eRec,nRec);
+		printf("=======================  %d==========================",newGraph.nodes[i].order);
 		for(int j=0;j<newGraph.nNum;j++)
 		if(i!=j&&dataGraph.nodes[num[j]].h<20000)
 		{
-			printf("\nk= %d has dis= %d\n",dataGraph.nodes[num[j]].order,dataGraph.nodes[num[j]].h);
+			printf("\nk= %d has dis= %d\n",newGraph.nodes[j].order,dataGraph.nodes[num[j]].h);
+			printf("%x\n",pRec[num[j]][0]);
 			newGraph.eNum++;
 			Edge temp;
-			temp.pre=newGraph.nodes[i].lastEdge;
+			temp.pre=newGraph.nodes[j].lastEdge;
 			temp.msg=1.0;
 			temp.back=i;
 			temp.weight=dataGraph.nodes[num[j]].h;
+
+			for(int k=0;k<nRec[num[j]];k++)
+			{
+				printf("%d\n",dataGraph.edges[eRec[num[j]][k]].order);
+				temp.subEdgeOrders.push_back(eRec[num[j]][k]);
+			}
 			for(int k=0;k<=20;k++)
 				temp.path[k]=pRec[num[j]][k];
 			newGraph.edges.push_back(temp);
@@ -276,7 +290,7 @@ int Graph::Astar(Graph& dataGraph,int K,int st,int en,int* pRec)
 	} 
 	return -1;  
 }*/
-void Graph::reverse(Graph& dataGraph,int st,int pRec[][21])
+void Graph::reverse(Graph& dataGraph,int st,int pRec[][21],int eRec[][601],int nRec[])
 {
 	Graph counterGraph;
 	for(int i=0;i<nNum;i++)
@@ -293,6 +307,9 @@ void Graph::reverse(Graph& dataGraph,int st,int pRec[][21])
 	int from[601];
 	for(int i=0;i<dataGraph.nNum;i++)
 		from[i]=-1;
+	int frome[601];
+	for(int i=0;i<dataGraph.nNum;i++)
+		frome[i]=0;
 
 	
 	int n=dataGraph.nNum;
@@ -306,6 +323,7 @@ void Graph::reverse(Graph& dataGraph,int st,int pRec[][21])
 			temp.pre=counterGraph.nodes[v].lastEdge;
 			temp.back=i;
 			temp.weight=dataGraph.edges[j].weight;
+			temp.order=dataGraph.edges[j].order;
 			counterGraph.edges.push_back(temp);
 			counterGraph.nodes[v].lastEdge=counterGraph.eNum;
 		}
@@ -329,17 +347,6 @@ void Graph::reverse(Graph& dataGraph,int st,int pRec[][21])
 		}
 		if(k==-1||_min>=10000000)
 			break;  
-		if(dataGraph.nodes[k].label==1)
-		{
-			int now_state=from[k];
-			while(from[now_state]!=-1)
-			{
-				//printf("%d\n",now_state);
-				int value=now_state;
-				pRec[k][value/30]=(pRec[k][value/30]|(1<<(value%30)));
-				now_state=from[now_state];
-			}
-		}
 		vis[k]=true;  
 		for(int temp=counterGraph.nodes[k].lastEdge;temp;temp=counterGraph.edges[temp].pre)
 		{
@@ -348,9 +355,28 @@ void Graph::reverse(Graph& dataGraph,int st,int pRec[][21])
 			{
 				dataGraph.nodes[v].h=dataGraph.nodes[k].h+counterGraph.edges[temp].weight;
 				from[v]=k;
+				frome[v]=temp;
 			}
 		}
 	}
+	for(int k=0;k<n;k++)
+		if(dataGraph.nodes[k].label==1&&dataGraph.nodes[k].h<=20000)
+		{
+			for(int i=0;i<21;i++)
+				pRec[k][i]=0;
+			int now_state=k;
+			nRec[k]=0;
+			while(from[now_state]!=-1)
+			{
+				//printf("%d\n",now_state);
+				int value=now_state;
+				eRec[k][nRec[k]]=counterGraph.edges[frome[now_state]].order;
+				nRec[k]++;
+				if(now_state!=k)
+				pRec[k][value/30]=(pRec[k][value/30]|(1<<(value%30)));
+				now_state=from[now_state];
+			}
+		}
 	return;
 }
 

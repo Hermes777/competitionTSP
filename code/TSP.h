@@ -3,7 +3,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <vector>
 #include "Graph.h"
+using namespace std;
 
 const int antNum=33; //蚂蚁数量
 const double ALPHA=1.0; //启发因子，信息素的重要程度
@@ -18,6 +20,7 @@ class CAnt
 	public:
 		double totLength;
 		int pathNum;
+		int pRec[21];
 	public:
 		CAnt(void);
 		~CAnt(void);
@@ -29,6 +32,8 @@ class CAnt
 		int m_nCurCityNo; //当前所在国家编号
 		int m_nMovedCityCount; //已经去过的西方国家数量
 	public:
+ 		int notCross(int *a,int *b);
+		void makeCross(int *a,int *b);
 		int ChooseNextCity(Graph& dataGraph); //选择下一个国家
 		void Init(Graph &dataGraph); //初始化
 		int Move(Graph &dataGraph); //蚂蚁在国家间移动
@@ -75,6 +80,18 @@ void CAnt::Init(Graph &dataGraph)
 }
 //选择下一个城市
 //返回值 为城市编号
+int CAnt::notCross(int *a,int *b)
+{
+	for(int i=0;i<20;i++)
+		if(a[i]&b[i])
+			return 0;
+	return 1;
+}
+void CAnt::makeCross(int *a,int *b)
+{
+	for(int i=0;i<=20;i++)
+		a[i]=(a[i]|b[i]);
+}
 int CAnt::ChooseNextCity(Graph& dataGraph)
 {
 	int n=dataGraph.nNum;
@@ -84,13 +101,18 @@ int CAnt::ChooseNextCity(Graph& dataGraph)
 	
 	double dbTotal=0.0;   
 	double prob[n]; //保存各个城市被选中的概率
+	//int pRec[21];
+	//memset(pRec,0,sizeof(pRec));
 	
 	for(int i = dataGraph.nodes[m_nCurCityNo].lastEdge; i; i = dataGraph.edges[i].pre)
+	if(notCross(dataGraph.edges[i].path,pRec))
 	{
 		int orient = dataGraph.edges[i].back;
+		//if(dataGraph.nodes[orient].order==7&&dataGraph.nodes[m_nCurCityNo].order==3)
+		//	printf("^(&*^(*&(*^(*&(& %d %d\n",m_nCurCityNo,orient);
 		if (m_nAllowedCity[orient] == 1) //城市没去过
 		{
-			prob[orient]+=pow(dataGraph.edges[i].msg,ALPHA)*pow((1.0+dataGraph.nodes[orient].label)/dataGraph.edges[i].weight,BETA); //该城市和当前城市间的信息素
+			prob[orient]+=pow(dataGraph.edges[i].msg,ALPHA);//*pow((1.0+dataGraph.nodes[orient].label)/dataGraph.edges[i].weight,BETA); //该城市和当前城市间的信息素
 			dbTotal=dbTotal+prob[orient]; //累加信息素，得到总和
 		}
 		else //如果城市去过了，则其被选中的概率值为0
@@ -106,6 +128,7 @@ int CAnt::ChooseNextCity(Graph& dataGraph)
 		dbTemp=rnd(0.0,dbTotal); //取一个随机数
 
 		for(int i = dataGraph.nodes[m_nCurCityNo].lastEdge; i; i = dataGraph.edges[i].pre)
+		if(notCross(dataGraph.edges[i].path,pRec))
 		{
 			int orient = dataGraph.edges[i].back;
 			if (m_nAllowedCity[orient] == 1) //城市没去过
@@ -116,6 +139,7 @@ int CAnt::ChooseNextCity(Graph& dataGraph)
  					m_nPath[pathNum]=i;
 	 				pathNum++;
  					nSelectedCity=orient;
+ 					makeCross(pRec,dataGraph.edges[i].path);
  					totLength+=dataGraph.edges[i].weight;
 					break;
 				}
@@ -123,21 +147,16 @@ int CAnt::ChooseNextCity(Graph& dataGraph)
 		}
 	}
 	//==============================================================================
-	//如果城市间的信息素非常小 ( 小到比double能够表示的最小的数字还要小 )
-	//那么由于浮点运算的误差原因，上面计算的概率总和可能为0
-	//会出现经过上述操作，没有城市被选择出来
-	//出现这种情况，就把第一个没去过的城市作为返回结果
-	
-	//题外话：刚开始看的时候，下面这段代码困惑了我很长时间，想不通为何要有这段代码，后来才搞清楚。
 	if (nSelectedCity == -1)
 	{
 		for(int i = dataGraph.nodes[m_nCurCityNo].lastEdge; i; i = dataGraph.edges[i].pre)
 		{
 			int orient = dataGraph.edges[i].back;
-			if (m_nAllowedCity[orient] == 1) //城市没去过
+			if (m_nAllowedCity[orient] == 1) 
 			{
 				nSelectedCity=orient;
- 				totLength+=dataGraph.edges[i].weight;
+				makeCross(pRec,dataGraph.edges[i].path);
+				totLength+=dataGraph.edges[i].weight;
  				m_nPath[pathNum]=i;
  				pathNum++;
 				break;
@@ -145,7 +164,6 @@ int CAnt::ChooseNextCity(Graph& dataGraph)
 		}
 	}
 	//==============================================================================
-	//返回结果，就是城市的编号
 	return nSelectedCity;
 }
 
@@ -166,6 +184,7 @@ void CAnt::Search(Graph& dataGraph)
 {
 	Init(dataGraph); //蚂蚁搜索前，先初始化
 	//如果蚂蚁去过的城市数量小于城市数量，就继续移动
+	memset(pRec,0,sizeof(pRec));
 	totLength=0;
 	while(1)
 	{
@@ -242,17 +261,30 @@ void TSP::init(Graph& dataGraph)
 	double expense=0;
 	for (i=0;i<m_cBestAnt.pathNum-1;i++)
 	{
-//		printf("%d ",dataGraph.nodes[dataGraph.edges[m_cBestAnt.m_nPath[i]].back].order);
-		fprintf(fo,"%d|",dataGraph.edges[m_cBestAnt.m_nPath[i]].order);
-		printf("%d|",dataGraph.nodes[dataGraph.edges[m_cBestAnt.m_nPath[i]].back].order);
-		expense+=dataGraph.edges[m_cBestAnt.m_nPath[i]].weight;
+		vector<int>::iterator it;
+		for(it  = dataGraph.edges[m_cBestAnt.m_nPath[i]].subEdgeOrders.begin();it != dataGraph.edges[m_cBestAnt.m_nPath[i]].subEdgeOrders.end();it++) 
+		{
+			printf("%d ",*(it));
+			fprintf(fo,"%d|",*(it));
+			//printf("%d|",dataGraph.nodes[dataGraph.edges[m_cBestAnt.m_nPath[i]].back].order);
+			expense+=dataGraph.edges[m_cBestAnt.m_nPath[i]].weight;
+		}
 		//if (i % 20 == 0)
 		//	printf("\n");
 		//printf(cBuf);
 	}
 	expense+=dataGraph.edges[m_cBestAnt.m_nPath[i]].weight;
-	fprintf(fo,"%d",dataGraph.edges[m_cBestAnt.m_nPath[i]].order);
-	printf("\n%lf\n", expense);
+	vector<int>::iterator it;
+	for(it  = dataGraph.edges[m_cBestAnt.m_nPath[i]].subEdgeOrders.begin();it != dataGraph.edges[m_cBestAnt.m_nPath[i]].subEdgeOrders.end();it++) 
+	{
+		printf("%d ",*(it));
+		if(it != dataGraph.edges[m_cBestAnt.m_nPath[i]].subEdgeOrders.end()-1)
+			fprintf(fo,"%d|",*(it));
+		else
+			fprintf(fo,"%d",*(it));
+		//printf("%d|",dataGraph.nodes[dataGraph.edges[m_cBestAnt.m_nPath[i]].back].order);
+		expense+=dataGraph.edges[m_cBestAnt.m_nPath[i]].weight;
+	}
 	fclose(fo);
 	//printf("\n\nPress any key to exit!");
 	//getchar();
@@ -280,10 +312,10 @@ void TSP::UpdateMsg(Graph& dataGraph,int x)
 		if(dbTempAry[i]>_max)
 			_max=dbTempAry[i];
 	for (int i=0;i<=m;i++)
-		if(x==1)
+		//if(x==1)
 			dataGraph.edges[i].msg=1;
-		else
-			dataGraph.edges[i].msg=dataGraph.edges[i].msg*ROU+logistic(dbTempAry[i]-_max/2)*0.1; //最新的环境信息素 = 留存的信息素 + 新留下的信息素
+		//else
+			//dataGraph.edges[i].msg=dataGraph.edges[i].msg*ROU+logistic(dbTempAry[i]-_max/2)*0.1; //最新的环境信息素 = 留存的信息素 + 新留下的信息素
 }
 
 void TSP::Search(Graph& dataGraph)
@@ -303,6 +335,8 @@ void TSP::Search(Graph& dataGraph)
 		//保存最佳结果
 		for (int j=0;j<antNum;j++)
 		{
+			//for(int k=0;k<m_cBestAnt.pathNum;k++)
+			//		printf("%d ",dataGraph.nodes[dataGraph.edges[m_cAntAry[j].m_nPath[k]].back].order);
 			if (m_cAntAry[j].m_dbPathLength < m_cBestAnt.m_dbPathLength)
 			{
 				//printf("--%d00", m_cAntAry[j].pathNum);
@@ -313,13 +347,6 @@ void TSP::Search(Graph& dataGraph)
 				{
 					m_cBestAnt.m_nPath[k]=m_cAntAry[j].m_nPath[k];
 					printf("%lf ",dataGraph.edges[m_cAntAry[j].m_nPath[k]].msg);
-
-				}
-				printf("\n==\n");
-				for(int k=0;k<m_cBestAnt.pathNum;k++)
-				{
-					m_cBestAnt.m_nPath[k]=m_cAntAry[j].m_nPath[k];
-					printf("%d ",dataGraph.nodes[dataGraph.edges[m_cAntAry[j].m_nPath[k]].back].order);
 
 				}
 				printf("\n=\n");

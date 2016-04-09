@@ -19,8 +19,8 @@ int main()
 	
 	//dataGraph.write();
 	//Graph testGraph(Graph.refine());
-	//TSP tsp;
-	//tsp.init(dataGraph);
+	TSP tsp;
+	tsp.init(testGraph);
 	
 	//tsp.optimize(testGraph);
 	//tsp.write();
