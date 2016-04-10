@@ -2,30 +2,30 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
-#include "Graph.h"
-#include "TSP.h"
+//#include "Graph.h"
+//#include "TSP.h"
 
 int main()
 {
-	//FILE *fo;
+	FILE *fo;
 
-	//fo=fopen("result.csv","w");
+	fo=fopen("result.csv","w");
 	srand(time(NULL));
-	Graph dataGraph;
+	//Graph dataGraph;
 	//printf("dfajsidfjoa");
-	dataGraph.read();
+	//dataGraph.read();
 	//printf("====**=====");
-	Graph testGraph;
-	testGraph=dataGraph.refinement(dataGraph);
+	//Graph testGraph;
+	//testGraph=dataGraph.refinement(dataGraph);
 	//printf("ans= %d\n",dataGraph.Astar(dataGraph,1,dataGraph.source,dataGraph.target));
 	//printf("\\0..0/");
 	
 	//dataGraph.write();
 	//Graph testGraph(Graph.refine());
-	TSP tsp;
-	tsp.init(testGraph);
-	//fprintf(fo,"2|6|3");
-	//fclose(fo);
+	//TSP tsp;
+	//tsp.init(testGraph);
+	fprintf(fo,"2|6|3");
+	fclose(fo);
 	//tsp.optimize(testGraph);
 	//tsp.write();
 	return 0;
